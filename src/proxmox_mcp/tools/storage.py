@@ -30,8 +30,8 @@ class StorageTools(ProxmoxTool):
     storage information might be temporarily unavailable.
     """
 
-    def get_storage(self) -> List[Content]:
-        """List storage pools across the cluster with detailed status.
+    def get_storage(self, cluster: str) -> List[Content]:
+        """List storage pools across a cluster with detailed status.
 
         Retrieves comprehensive information for each storage pool including:
         - Basic identification (name, type)
@@ -41,33 +41,29 @@ class StorageTools(ProxmoxTool):
           * Used space
           * Total capacity
           * Available space
-        
+
         Implements a fallback mechanism that returns basic information
         if detailed status retrieval fails for any storage pool.
 
+        Args:
+            cluster: Name of the cluster to query (e.g., 'Building 4')
+
         Returns:
-            List of Content objects containing formatted storage information:
-            {
-                "storage": "storage-name",
-                "type": "storage-type",
-                "content": ["content-types"],
-                "status": "online/offline",
-                "used": bytes,
-                "total": bytes,
-                "available": bytes
-            }
+            List of Content objects containing formatted storage information
 
         Raises:
+            ValueError: If the cluster name is not found
             RuntimeError: If the cluster-wide storage query fails
         """
         try:
-            result = self.proxmox.storage.get()
+            api = self.get_api(cluster)
+            result = api.storage.get()
             storage = []
-            
+
             for store in result:
                 # Get detailed storage info including usage
                 try:
-                    status = self.proxmox.nodes(store.get("node", "localhost")).storage(store["storage"]).status.get()
+                    status = api.nodes(store.get("node", "localhost")).storage(store["storage"]).status.get()
                     storage.append({
                         "storage": store["storage"],
                         "type": store["type"],
@@ -88,7 +84,9 @@ class StorageTools(ProxmoxTool):
                         "total": 0,
                         "available": 0
                     })
-                    
+
             return self._format_response(storage, "storage")
+        except ValueError:
+            raise
         except Exception as e:
             self._handle_error("get storage", e)
