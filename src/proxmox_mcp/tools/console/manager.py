@@ -19,13 +19,13 @@ from typing import Dict, Any
 
 class VMConsoleManager:
     """Manager class for VM console operations.
-    
+
     Provides functionality for:
     - Executing commands in VM consoles
     - Managing command execution lifecycle
     - Handling command output and errors
     - Monitoring execution status
-    
+
     Uses QEMU guest agent for reliable command execution with:
     - VM state verification before execution
     - Asynchronous command processing
@@ -33,16 +33,16 @@ class VMConsoleManager:
     - Comprehensive error handling
     """
 
-    def __init__(self, proxmox_api):
+    def __init__(self, cluster_manager):
         """Initialize the VM console manager.
 
         Args:
-            proxmox_api: Initialized ProxmoxAPI instance
+            cluster_manager: Initialized ProxmoxClusterManager instance
         """
-        self.proxmox = proxmox_api
+        self.cluster_manager = cluster_manager
         self.logger = logging.getLogger("proxmox-mcp.vm-console")
 
-    async def execute_command(self, node: str, vmid: str, command: str) -> Dict[str, Any]:
+    async def execute_command(self, cluster: str, node: str, vmid: str, command: str) -> Dict[str, Any]:
         """Execute a command in a VM's console via QEMU guest agent.
 
         Implements a two-phase command execution process:
@@ -50,18 +50,19 @@ class VMConsoleManager:
            - Verifies VM exists and is running
            - Initiates command execution via guest agent
            - Captures command PID for tracking
-        
+
         2. Result Collection:
            - Monitors command execution status
            - Captures command output and errors
            - Handles completion status
-        
+
         Requirements:
         - VM must be running
         - QEMU guest agent must be installed and active
         - Command execution permissions must be enabled
 
         Args:
+            cluster: Name of the cluster (e.g., 'Building 4')
             node: Name of the node where VM is running (e.g., 'pve1')
             vmid: ID of the VM to execute command in (e.g., '100')
             command: Shell command to execute in the VM
@@ -77,6 +78,7 @@ class VMConsoleManager:
 
         Raises:
             ValueError: If:
+                     - Cluster is not found
                      - VM is not found
                      - VM is not running
                      - Guest agent is not available
@@ -86,18 +88,21 @@ class VMConsoleManager:
                        - API communication errors occur
         """
         try:
+            # Get the API for the specified cluster
+            proxmox = self.cluster_manager.get_api(cluster)
+
             # Verify VM exists and is running
-            vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            vm_status = proxmox.nodes(node).qemu(vmid).status.current.get()
             if vm_status["status"] != "running":
                 self.logger.error(f"Failed to execute command on VM {vmid}: VM is not running")
                 raise ValueError(f"VM {vmid} on node {node} is not running")
 
             # Get VM's console
-            self.logger.info(f"Executing command on VM {vmid} (node: {node}): {command}")
-            
+            self.logger.info(f"Executing command on VM {vmid} (node: {node}, cluster: {cluster}): {command}")
+
             # Get the API endpoint
             # Use the guest agent exec endpoint
-            endpoint = self.proxmox.nodes(node).qemu(vmid).agent
+            endpoint = proxmox.nodes(node).qemu(vmid).agent
             self.logger.debug(f"Using API endpoint: {endpoint}")
             
             # Execute the command using two-step process

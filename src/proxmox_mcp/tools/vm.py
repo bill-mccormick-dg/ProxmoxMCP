@@ -21,29 +21,29 @@ from .console.manager import VMConsoleManager
 
 class VMTools(ProxmoxTool):
     """Tools for managing Proxmox VMs.
-    
+
     Provides functionality for:
     - Retrieving cluster-wide VM information
     - Getting detailed VM status and configuration
     - Executing commands within VMs
     - Managing VM console operations
-    
+
     Implements fallback mechanisms for scenarios where detailed
     VM information might be temporarily unavailable. Integrates
     with QEMU guest agent for VM command execution.
     """
 
-    def __init__(self, proxmox_api):
+    def __init__(self, cluster_manager):
         """Initialize VM tools.
 
         Args:
-            proxmox_api: Initialized ProxmoxAPI instance
+            cluster_manager: Initialized ProxmoxClusterManager instance
         """
-        super().__init__(proxmox_api)
-        self.console_manager = VMConsoleManager(proxmox_api)
+        super().__init__(cluster_manager)
+        self.console_manager = VMConsoleManager(cluster_manager)
 
-    def get_vms(self) -> List[Content]:
-        """List all virtual machines across the cluster with detailed status.
+    def get_vms(self, cluster: str) -> List[Content]:
+        """List all virtual machines across a cluster with detailed status.
 
         Retrieves comprehensive information for each VM including:
         - Basic identification (ID, name)
@@ -52,37 +52,31 @@ class VMTools(ProxmoxTool):
           * CPU cores
           * Memory allocation and usage
         - Node placement
-        
+
         Implements a fallback mechanism that returns basic information
         if detailed configuration retrieval fails for any VM.
 
+        Args:
+            cluster: Name of the cluster to query (e.g., 'Building 4')
+
         Returns:
-            List of Content objects containing formatted VM information:
-            {
-                "vmid": "100",
-                "name": "vm-name",
-                "status": "running/stopped",
-                "node": "node-name",
-                "cpus": core_count,
-                "memory": {
-                    "used": bytes,
-                    "total": bytes
-                }
-            }
+            List of Content objects containing formatted VM information
 
         Raises:
+            ValueError: If the cluster name is not found
             RuntimeError: If the cluster-wide VM query fails
         """
         try:
+            api = self.get_api(cluster)
             result = []
-            for node in self.proxmox.nodes.get():
+            for node in api.nodes.get():
                 node_name = node["node"]
-                vms = self.proxmox.nodes(node_name).qemu.get()
+                vms = api.nodes(node_name).qemu.get()
                 for vm in vms:
                     vmid = vm["vmid"]
                     # Get VM config for CPU cores
                     try:
-                        config = self.proxmox.nodes(node_name).qemu(vmid).config.get()
+                        config = api.nodes(node_name).qemu(vmid).config.get()
                         result.append({
                             "vmid": vmid,
                             "name": vm["name"],
@@ -108,10 +102,12 @@ class VMTools(ProxmoxTool):
                             }
                         })
             return self._format_response(result, "vms")
+        except ValueError:
+            raise
         except Exception as e:
             self._handle_error("get VMs", e)
 
-    async def execute_command(self, node: str, vmid: str, command: str) -> List[Content]:
+    async def execute_command(self, cluster: str, node: str, vmid: str, command: str) -> List[Content]:
         """Execute a command in a VM via QEMU guest agent.
 
         Uses the QEMU guest agent to execute commands within a running VM.
@@ -121,24 +117,20 @@ class VMTools(ProxmoxTool):
         - Command execution permissions must be enabled
 
         Args:
+            cluster: Name of the cluster (e.g., 'Building 4')
             node: Host node name (e.g., 'pve1', 'proxmox-node2')
             vmid: VM ID number (e.g., '100', '101')
             command: Shell command to run (e.g., 'uname -a', 'systemctl status nginx')
 
         Returns:
-            List of Content objects containing formatted command output:
-            {
-                "success": true/false,
-                "output": "command output",
-                "error": "error message if any"
-            }
+            List of Content objects containing formatted command output
 
         Raises:
-            ValueError: If VM is not found, not running, or guest agent is not available
+            ValueError: If cluster/VM is not found, not running, or guest agent is not available
             RuntimeError: If command execution fails due to permissions or other issues
         """
         try:
-            result = await self.console_manager.execute_command(node, vmid, command)
+            result = await self.console_manager.execute_command(cluster, node, vmid, command)
             # Use the command output formatter from ProxmoxFormatters
             from ..formatting import ProxmoxFormatters
             formatted = ProxmoxFormatters.format_command_output(
@@ -148,5 +140,7 @@ class VMTools(ProxmoxTool):
                 error=result.get("error")
             )
             return [Content(type="text", text=formatted)]
+        except ValueError:
+            raise
         except Exception as e:
             self._handle_error(f"execute command on VM {vmid}", e)

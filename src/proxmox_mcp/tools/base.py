@@ -15,28 +15,43 @@ from typing import Any, Dict, List, Optional, Union
 from mcp.types import TextContent as Content
 from proxmoxer import ProxmoxAPI
 from ..formatting import ProxmoxTemplates
+from ..core.proxmox import ProxmoxClusterManager
 
 class ProxmoxTool:
     """Base class for Proxmox MCP tools.
-    
+
     This class provides common functionality used by all Proxmox tool implementations:
-    - Proxmox API access
+    - Multi-cluster Proxmox API access
     - Standardized logging
     - Response formatting
     - Error handling
-    
+
     All tool classes should inherit from this base class to ensure consistent
     behavior and error handling across the MCP server.
     """
 
-    def __init__(self, proxmox_api: ProxmoxAPI):
-        """Initialize the tool.
+    def __init__(self, cluster_manager: ProxmoxClusterManager):
+        """Initialize the tool with cluster manager.
 
         Args:
-            proxmox_api: Initialized ProxmoxAPI instance
+            cluster_manager: Initialized ProxmoxClusterManager instance
         """
-        self.proxmox = proxmox_api
+        self.cluster_manager = cluster_manager
         self.logger = logging.getLogger(f"proxmox-mcp.{self.__class__.__name__.lower()}")
+
+    def get_api(self, cluster: str) -> ProxmoxAPI:
+        """Get the Proxmox API instance for a specific cluster.
+
+        Args:
+            cluster: Name of the cluster to access
+
+        Returns:
+            ProxmoxAPI instance for the specified cluster
+
+        Raises:
+            ValueError: If the cluster name is not found
+        """
+        return self.cluster_manager.get_api(cluster)
 
     def _format_response(self, data: Any, resource_type: Optional[str] = None) -> List[Content]:
         """Format response data into MCP content using templates.
