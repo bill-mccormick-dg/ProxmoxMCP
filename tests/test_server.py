@@ -41,11 +41,15 @@ def mock_api():
     api.storage.get.return_value = [
         {"storage": "local", "type": "dir", "enabled": True}
     ]
-    api.nodes.return_value.storage.return_value.status.get.return_value = {
-        "used": 10_000_000_000,
-        "total": 50_000_000_000,
-        "avail": 40_000_000_000,
-    }
+    api.nodes.return_value.storage.get.return_value = [
+        {
+            "storage": "local",
+            "type": "dir",
+            "used": 10_000_000_000,
+            "total": 50_000_000_000,
+            "avail": 40_000_000_000,
+        }
+    ]
     api.cluster.status.get.return_value = [
         {"type": "cluster", "name": "test-cluster", "quorate": 1}
     ]
