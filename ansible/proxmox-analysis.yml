@@ -1,0 +1,148 @@
+---
+- name: Proxmox infrastructure analysis via MCP
+  hosts: localhost
+  gather_facts: yes
+
+  vars:
+    mcp_python: "{{ playbook_dir }}/../venv/bin/python"
+    mcp_script: "{{ playbook_dir }}/proxmox_mcp_query.py"
+    mcp_config: "{{ lookup('env', 'PROXMOX_MCP_CONFIG') }}"
+    report_dir: "{{ playbook_dir }}/reports"
+    claude_model: "claude-sonnet-4-6"
+    # Analysis backend:
+    #   cli — use the `claude` CLI (uses your Claude.ai subscription, no API credits)
+    #   api — POST to api.anthropic.com (requires anthropic_api_key + API credits)
+    analysis_backend: "cli"
+    claude_cli: "claude"
+
+  tasks:
+    - name: Verify MCP config path is set
+      assert:
+        that: mcp_config != ""
+        fail_msg: "PROXMOX_MCP_CONFIG environment variable must be set"
+
+    - name: Load Anthropic API key (api backend only)
+      include_vars: vars/anthropic.yml
+      when: analysis_backend == 'api'
+
+    - name: Ensure report directory exists
+      file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: List available clusters
+      command:
+        argv:
+          - "{{ mcp_python }}"
+          - "{{ mcp_script }}"
+          - "--config"
+          - "{{ mcp_config }}"
+          - "list_clusters"
+      register: clusters_raw
+      changed_when: false
+
+    - name: Parse cluster list
+      set_fact:
+        clusters: "{{ (clusters_raw.stdout | from_json).clusters }}"
+
+    - name: Collect metrics from all clusters
+      command:
+        argv:
+          - "{{ mcp_python }}"
+          - "{{ mcp_script }}"
+          - "--config"
+          - "{{ mcp_config }}"
+          - "--cluster"
+          - "{{ item }}"
+          - "all"
+      loop: "{{ clusters }}"
+      register: metrics_raw
+      changed_when: false
+
+    - name: Build metrics report
+      set_fact:
+        metrics_report: |
+          {% for result in metrics_raw.results %}
+          ==========================================
+          Cluster: {{ result.item }}
+          ==========================================
+
+          {% set data = result.stdout | from_json %}
+          NODES:
+          {{ data.get_nodes }}
+
+          VIRTUAL MACHINES:
+          {{ data.get_vms }}
+
+          STORAGE:
+          {{ data.get_storage }}
+
+          CLUSTER STATUS:
+          {{ data.get_cluster_status }}
+
+          {% endfor %}
+
+    - name: Build analysis prompt
+      set_fact:
+        analysis_prompt: |
+          Analyze the following Proxmox infrastructure metrics and provide:
+
+          1. **Health summary** — overall status of each cluster and any concerns
+          2. **Resource utilization** — CPU, memory, and storage usage with highlights
+          3. **Anomalies or risks** — anything that warrants attention
+          4. **Capacity recommendations** — headroom and planning suggestions
+
+          Format the response as markdown.
+
+          {{ metrics_report }}
+
+    - name: Analyze metrics with Claude (CLI / subscription)
+      when: analysis_backend == 'cli'
+      command:
+        argv:
+          - "{{ claude_cli }}"
+          - "-p"
+          - "{{ analysis_prompt }}"
+      register: claude_cli_result
+      changed_when: false
+
+    - name: Analyze metrics with Claude (API)
+      when: analysis_backend == 'api'
+      uri:
+        url: "https://api.anthropic.com/v1/messages"
+        method: POST
+        headers:
+          x-api-key: "{{ anthropic_api_key }}"
+          anthropic-version: "2023-06-01"
+          content-type: "application/json"
+        body_format: json
+        body:
+          model: "{{ claude_model }}"
+          max_tokens: 4096
+          messages:
+            - role: user
+              content: "{{ analysis_prompt }}"
+        status_code: 200
+      register: claude_api_result
+
+    - name: Collect analysis text
+      set_fact:
+        analysis_text: "{{ claude_cli_result.stdout if analysis_backend == 'cli' else claude_api_result.json.content[0].text }}"
+
+    - name: Save analysis report
+      copy:
+        content: |
+          # Proxmox Infrastructure Analysis
+          Generated: {{ ansible_date_time.iso8601 }}
+          Clusters: {{ clusters | join(', ') }}
+
+          ---
+
+          {{ analysis_text }}
+        dest: "{{ report_dir }}/proxmox-analysis-{{ ansible_date_time.date }}.md"
+        mode: "0644"
+
+    - name: Report saved
+      debug:
+        msg: "Report written to {{ report_dir }}/proxmox-analysis-{{ ansible_date_time.date }}.md"

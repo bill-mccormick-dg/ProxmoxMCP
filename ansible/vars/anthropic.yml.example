@@ -1,0 +1,7 @@
+# Copy to vars/anthropic.yml and encrypt with ansible-vault:
+#   ansible-vault encrypt vars/anthropic.yml
+#
+# Usage:
+#   ansible-playbook proxmox-analysis.yml --ask-vault-pass
+
+anthropic_api_key: "sk-ant-..."

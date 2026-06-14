@@ -60,3 +60,5 @@ coverage.xml
 # Local configuration — never commit real credentials
 proxmox-config/config.json
 .mcp.json
+ansible/vars/anthropic.yml
+ansible/reports/

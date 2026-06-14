@@ -30,6 +30,44 @@ class StorageTools(ProxmoxTool):
     storage information might be temporarily unavailable.
     """
 
+    def _collect_storage_usage(self, api) -> dict:
+        """Build a {storage_name: {used, total, avail}} map from all online nodes.
+
+        The cluster-wide /storage endpoint only lists pool definitions; usage
+        figures are reported per node at /nodes/{node}/storage. Iterating the
+        online nodes lets us populate usage for both local pools (reported only
+        on their owning node) and shared pools (reported identically on every
+        node). The first node reporting a non-zero total wins for each pool.
+        """
+        usage: dict = {}
+        try:
+            nodes = api.nodes.get()
+        except Exception:
+            return usage
+
+        for node in nodes:
+            node_name = node.get("node")
+            if not node_name or node.get("status") != "online":
+                continue
+            try:
+                node_storage = api.nodes(node_name).storage.get()
+            except Exception:
+                continue
+            for s in node_storage:
+                name = s.get("storage")
+                if not name:
+                    continue
+                total = s.get("total", 0)
+                # Keep the first entry that actually reports capacity so a node
+                # where the pool is inactive (total 0) doesn't mask a good one.
+                if name not in usage or (total and not usage[name].get("total")):
+                    usage[name] = {
+                        "used": s.get("used", 0),
+                        "total": total,
+                        "avail": s.get("avail", 0),
+                    }
+        return usage
+
     def get_storage(self, cluster: str) -> List[Content]:
         """List storage pools across a cluster with detailed status.
 
@@ -58,28 +96,26 @@ class StorageTools(ProxmoxTool):
         try:
             api = self.get_api(cluster)
             result = api.storage.get()
-            storage = []
 
+            # Usage statistics are exposed per node via /nodes/{node}/storage,
+            # not on the cluster-wide /storage endpoint. Build a usage map by
+            # querying each online node; a pool's stats are taken from the first
+            # node that reports a non-zero total (shared pools report identical
+            # numbers on every node, local pools only on their owning node).
+            usage = self._collect_storage_usage(api)
+
+            storage = []
             for store in result:
-                node_name = store.get("node")
-                used = total = available = 0
-                if node_name:
-                    # Per-node storage pools expose usage stats via the node API
-                    try:
-                        s = api.nodes(node_name).storage(store["storage"]).status.get()
-                        used = s.get("used", 0)
-                        total = s.get("total", 0)
-                        available = s.get("avail", 0)
-                    except Exception:
-                        pass
+                name = store["storage"]
+                stats = usage.get(name, {})
                 storage.append({
-                    "storage": store["storage"],
+                    "storage": name,
                     "type": store["type"],
                     "content": store.get("content", []),
                     "status": "online" if store.get("enabled", True) else "offline",
-                    "used": used,
-                    "total": total,
-                    "available": available,
+                    "used": stats.get("used", 0),
+                    "total": stats.get("total", 0),
+                    "available": stats.get("avail", 0),
                 })
 
             return self._format_response(storage, "storage")
