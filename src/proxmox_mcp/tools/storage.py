@@ -61,29 +61,26 @@ class StorageTools(ProxmoxTool):
             storage = []
 
             for store in result:
-                # Get detailed storage info including usage
-                try:
-                    status = api.nodes(store.get("node", "localhost")).storage(store["storage"]).status.get()
-                    storage.append({
-                        "storage": store["storage"],
-                        "type": store["type"],
-                        "content": store.get("content", []),
-                        "status": "online" if store.get("enabled", True) else "offline",
-                        "used": status.get("used", 0),
-                        "total": status.get("total", 0),
-                        "available": status.get("avail", 0)
-                    })
-                except Exception:
-                    # If detailed status fails, add basic info
-                    storage.append({
-                        "storage": store["storage"],
-                        "type": store["type"],
-                        "content": store.get("content", []),
-                        "status": "online" if store.get("enabled", True) else "offline",
-                        "used": 0,
-                        "total": 0,
-                        "available": 0
-                    })
+                node_name = store.get("node")
+                used = total = available = 0
+                if node_name:
+                    # Per-node storage pools expose usage stats via the node API
+                    try:
+                        s = api.nodes(node_name).storage(store["storage"]).status.get()
+                        used = s.get("used", 0)
+                        total = s.get("total", 0)
+                        available = s.get("avail", 0)
+                    except Exception:
+                        pass
+                storage.append({
+                    "storage": store["storage"],
+                    "type": store["type"],
+                    "content": store.get("content", []),
+                    "status": "online" if store.get("enabled", True) else "offline",
+                    "used": used,
+                    "total": total,
+                    "available": available,
+                })
 
             return self._format_response(storage, "storage")
         except ValueError:
