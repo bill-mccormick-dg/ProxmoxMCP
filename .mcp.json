@@ -6,7 +6,7 @@
       "cwd": "/home/bill/ProxmoxMCP",
       "env": {
         "PYTHONPATH": "/home/bill/ProxmoxMCP/src",
-        "PROXMOX_MCP_CONFIG": "/home/bill/ProxmoxMCP/proxmox-config/config.json"
+        "PROXMOX_MCP_CONFIG": "/home/bill/homenetwork/proxmox-mcp/config.json"
       }
     }
   }
