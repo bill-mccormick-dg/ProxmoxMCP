@@ -56,9 +56,10 @@ class ClusterTools(ProxmoxTool):
         try:
             api = self.get_api(cluster)
             result = api.cluster.status.get()
+            first = result[0] if result else {}
             status = {
-                "name": result[0].get("name") if result else None,
-                "quorum": result[0].get("quorate"),
+                "name": first.get("name"),
+                "quorum": first.get("quorate"),
                 "nodes": len([node for node in result if node.get("type") == "node"]),
                 "resources": [res for res in result if res.get("type") == "resource"]
             }

@@ -58,24 +58,29 @@ src/proxmox_mcp/
 
 ## Configuration
 
-Config lives at `proxmox-config/config.json`. Multi-cluster format — each cluster has its own name, host, and auth token:
+Config lives at `proxmox-config/config.json` (gitignored — never committed). Copy from the template:
+
+```bash
+cp proxmox-config/config.example.json proxmox-config/config.json
+# then fill in real hosts, users, and token values
+```
+
+Multi-cluster format — each cluster has its own name, host, and auth token:
 
 ```json
 {
     "clusters": [
         {
-            "name": "Building 1-ABE",
-            "proxmox": { "host": "10.8.0.200", "port": 8006, "verify_ssl": false, "service": "PVE" },
-            "auth": { "user": "root@pam", "token_name": "mcp-token", "token_value": "..." }
+            "name": "my-cluster",
+            "proxmox": { "host": "192.168.1.100", "port": 8006, "verify_ssl": false, "service": "PVE" },
+            "auth": { "user": "root@pam", "token_name": "mcp-token", "token_value": "<uuid>" }
         }
     ],
     "logging": { "level": "DEBUG", "format": "...", "file": "proxmox_mcp.log" }
 }
 ```
 
-Four configured clusters: Building 1-ABE (10.8.0.200), Building 2 (10.8.64.200), Building 3 (10.8.128.200), Building 4 (10.8.192.200).
-
-**Do not commit `proxmox-config/config.json`** — it contains real API tokens.
+Cluster names, IPs, and tokens are deployment-specific and must not appear in source code — they belong in `proxmox-config/config.json` only.
 
 ## MCP Tools
 

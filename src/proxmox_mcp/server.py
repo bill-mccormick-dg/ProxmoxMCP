@@ -37,7 +37,6 @@ from .tools.definitions import (
     GET_NODE_STATUS_DESC,
     GET_VMS_DESC,
     EXECUTE_VM_COMMAND_DESC,
-    GET_CONTAINERS_DESC,
     GET_STORAGE_DESC,
     GET_CLUSTER_STATUS_DESC,
     LIST_CLUSTERS_DESC
@@ -92,13 +91,13 @@ class ProxmoxMCPServer:
         # Node tools
         @self.mcp.tool(description=GET_NODES_DESC)
         def get_nodes(
-            cluster: Annotated[str, Field(description="Cluster name (e.g. 'Building 4', 'Building 1-ABE')")]
+            cluster: Annotated[str, Field(description="Cluster name — use list_clusters to see available names (e.g. 'datacenter-1', 'site-east')")]
         ):
             return self.node_tools.get_nodes(cluster)
 
         @self.mcp.tool(description=GET_NODE_STATUS_DESC)
         def get_node_status(
-            cluster: Annotated[str, Field(description="Cluster name (e.g. 'Building 4', 'Building 1-ABE')")],
+            cluster: Annotated[str, Field(description="Cluster name — use list_clusters to see available names (e.g. 'datacenter-1', 'site-east')")],
             node: Annotated[str, Field(description="Name/ID of node to query (e.g. 'pve1', 'proxmox-node2')")]
         ):
             return self.node_tools.get_node_status(cluster, node)
@@ -106,13 +105,13 @@ class ProxmoxMCPServer:
         # VM tools
         @self.mcp.tool(description=GET_VMS_DESC)
         def get_vms(
-            cluster: Annotated[str, Field(description="Cluster name (e.g. 'Building 4', 'Building 1-ABE')")]
+            cluster: Annotated[str, Field(description="Cluster name — use list_clusters to see available names (e.g. 'datacenter-1', 'site-east')")]
         ):
             return self.vm_tools.get_vms(cluster)
 
         @self.mcp.tool(description=EXECUTE_VM_COMMAND_DESC)
         async def execute_vm_command(
-            cluster: Annotated[str, Field(description="Cluster name (e.g. 'Building 4', 'Building 1-ABE')")],
+            cluster: Annotated[str, Field(description="Cluster name — use list_clusters to see available names (e.g. 'datacenter-1', 'site-east')")],
             node: Annotated[str, Field(description="Host node name (e.g. 'pve1', 'proxmox-node2')")],
             vmid: Annotated[str, Field(description="VM ID number (e.g. '100', '101')")],
             command: Annotated[str, Field(description="Shell command to run (e.g. 'uname -a', 'systemctl status nginx')")]
@@ -122,14 +121,14 @@ class ProxmoxMCPServer:
         # Storage tools
         @self.mcp.tool(description=GET_STORAGE_DESC)
         def get_storage(
-            cluster: Annotated[str, Field(description="Cluster name (e.g. 'Building 4', 'Building 1-ABE')")]
+            cluster: Annotated[str, Field(description="Cluster name — use list_clusters to see available names (e.g. 'datacenter-1', 'site-east')")]
         ):
             return self.storage_tools.get_storage(cluster)
 
         # Cluster tools
         @self.mcp.tool(description=GET_CLUSTER_STATUS_DESC)
         def get_cluster_status(
-            cluster: Annotated[str, Field(description="Cluster name (e.g. 'Building 4', 'Building 1-ABE')")]
+            cluster: Annotated[str, Field(description="Cluster name — use list_clusters to see available names (e.g. 'datacenter-1', 'site-east')")]
         ):
             return self.cluster_tools.get_cluster_status(cluster)
 
