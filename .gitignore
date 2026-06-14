@@ -57,5 +57,6 @@ coverage.xml
 # UV
 .uv/
 
-# Local configuration
-config/config.json
+# Local configuration — never commit real credentials
+proxmox-config/config.json
+.mcp.json

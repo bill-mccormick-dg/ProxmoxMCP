@@ -13,7 +13,7 @@ The models provide:
 - Field descriptions
 - Required vs optional field handling
 """
-from typing import Optional, Annotated
+from typing import Optional, Annotated, List
 from pydantic import BaseModel, Field
 
 class NodeStatus(BaseModel):
@@ -59,7 +59,7 @@ class AuthConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     """Model for logging configuration.
-    
+
     Defines logging parameters with sensible defaults.
     Supports both file and console logging with
     customizable format and log levels.
@@ -68,13 +68,22 @@ class LoggingConfig(BaseModel):
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"  # Optional: Log format
     file: Optional[str] = None  # Optional: Log file path (default: None for console logging)
 
+class ClusterConfig(BaseModel):
+    """Model for a single Proxmox cluster configuration.
+
+    Combines connection settings and authentication for one cluster.
+    Used in multi-cluster configurations where each cluster has a
+    unique name identifier.
+    """
+    name: str  # Required: Cluster identifier (e.g., 'Building 4', 'prod')
+    proxmox: ProxmoxConfig  # Required: Connection settings for this cluster
+    auth: AuthConfig  # Required: Authentication for this cluster
+
 class Config(BaseModel):
     """Root configuration model.
-    
-    Combines all configuration models into a single validated
-    configuration object. All sections are required to ensure
-    proper server operation.
+
+    Supports multi-cluster configurations where each cluster
+    has its own connection and authentication settings.
     """
-    proxmox: ProxmoxConfig  # Required: Proxmox connection settings
-    auth: AuthConfig  # Required: Authentication credentials
+    clusters: List[ClusterConfig]  # Required: List of cluster configurations
     logging: LoggingConfig  # Required: Logging configuration
