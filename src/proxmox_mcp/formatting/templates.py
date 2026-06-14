@@ -74,9 +74,9 @@ class ProxmoxTemplates:
         
         result = [
             f"{ProxmoxTheme.RESOURCES['node']} Node: {node}",
-            f"  • Status: {status.get('status', 'unknown').upper()}",
+            f"  • Status: {'ONLINE' if status.get('uptime', 0) > 0 else 'OFFLINE'}",
             f"  • Uptime: {ProxmoxFormatters.format_uptime(status.get('uptime', 0))}",
-            f"  • CPU Cores: {status.get('maxcpu', 'N/A')}",
+            f"  • CPU Cores: {status.get('cpuinfo', {}).get('cpus', 'N/A')}",
             f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
             f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)"
         ]
