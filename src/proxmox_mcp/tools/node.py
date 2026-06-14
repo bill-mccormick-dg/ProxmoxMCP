@@ -30,44 +30,39 @@ class NodeTools(ProxmoxTool):
     node information might be temporarily unavailable.
     """
 
-    def get_nodes(self) -> List[Content]:
-        """List all nodes in the Proxmox cluster with detailed status.
+    def get_nodes(self, cluster: str) -> List[Content]:
+        """List all nodes in a Proxmox cluster with detailed status.
 
         Retrieves comprehensive information for each node including:
         - Basic status (online/offline)
         - Uptime statistics
         - CPU configuration and count
         - Memory usage and capacity
-        
+
         Implements a fallback mechanism that returns basic information
         if detailed status retrieval fails for any node.
 
+        Args:
+            cluster: Name of the cluster to query (e.g., 'Building 4')
+
         Returns:
-            List of Content objects containing formatted node information:
-            {
-                "node": "node_name",
-                "status": "online/offline",
-                "uptime": seconds,
-                "maxcpu": cpu_count,
-                "memory": {
-                    "used": bytes,
-                    "total": bytes
-                }
-            }
+            List of Content objects containing formatted node information
 
         Raises:
+            ValueError: If the cluster name is not found
             RuntimeError: If the cluster-wide node query fails
         """
         try:
-            result = self.proxmox.nodes.get()
+            api = self.get_api(cluster)
+            result = api.nodes.get()
             nodes = []
-            
+
             # Get detailed info for each node
             for node in result:
                 node_name = node["node"]
                 try:
                     # Get detailed status for each node
-                    status = self.proxmox.nodes(node_name).status.get()
+                    status = api.nodes(node_name).status.get()
                     nodes.append({
                         "node": node_name,
                         "status": node["status"],
@@ -91,10 +86,12 @@ class NodeTools(ProxmoxTool):
                         }
                     })
             return self._format_response(nodes, "nodes")
+        except ValueError:
+            raise
         except Exception as e:
             self._handle_error("get nodes", e)
 
-    def get_node_status(self, node: str) -> List[Content]:
+    def get_node_status(self, cluster: str, node: str) -> List[Content]:
         """Get detailed status information for a specific node.
 
         Retrieves comprehensive status information including:
@@ -106,30 +103,21 @@ class NodeTools(ProxmoxTool):
         - Running tasks and services
 
         Args:
+            cluster: Name of the cluster to query (e.g., 'Building 4')
             node: Name/ID of node to query (e.g., 'pve1', 'proxmox-node2')
 
         Returns:
-            List of Content objects containing detailed node status:
-            {
-                "uptime": seconds,
-                "cpu": {
-                    "usage": percentage,
-                    "cores": count
-                },
-                "memory": {
-                    "used": bytes,
-                    "total": bytes,
-                    "free": bytes
-                },
-                ...additional status fields
-            }
+            List of Content objects containing detailed node status
 
         Raises:
-            ValueError: If the specified node is not found
+            ValueError: If the cluster name or node is not found
             RuntimeError: If status retrieval fails (node offline, network issues)
         """
         try:
-            result = self.proxmox.nodes(node).status.get()
+            api = self.get_api(cluster)
+            result = api.nodes(node).status.get()
             return self._format_response((node, result), "node_status")
+        except ValueError:
+            raise
         except Exception as e:
             self._handle_error(f"get status for node {node}", e)

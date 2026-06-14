@@ -12,9 +12,9 @@ interactions, ensuring consistent connection handling and authentication
 across the MCP server.
 """
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 from proxmoxer import ProxmoxAPI
-from ..config.models import ProxmoxConfig, AuthConfig
+from ..config.models import ProxmoxConfig, AuthConfig, ClusterConfig
 
 class ProxmoxManager:
     """Manager class for Proxmox API operations.
@@ -101,7 +101,7 @@ class ProxmoxManager:
 
     def get_api(self) -> ProxmoxAPI:
         """Get the initialized Proxmox API instance.
-        
+
         Provides access to the configured and tested ProxmoxAPI instance
         for making API calls. The instance maintains connection state and
         handles authentication automatically.
@@ -110,3 +110,67 @@ class ProxmoxManager:
             ProxmoxAPI instance ready for making API calls
         """
         return self.api
+
+
+class ProxmoxClusterManager:
+    """Manager for multiple Proxmox clusters.
+
+    This class handles:
+    - Initialization of multiple ProxmoxManager instances
+    - Cluster name to manager mapping
+    - API access by cluster name
+    - Cluster enumeration
+
+    Each cluster is identified by a unique name and has its own
+    connection and authentication configuration.
+    """
+
+    def __init__(self, clusters: List[ClusterConfig]):
+        """Initialize the cluster manager with multiple clusters.
+
+        Args:
+            clusters: List of cluster configurations
+
+        Raises:
+            ValueError: If no clusters are provided
+        """
+        self.logger = logging.getLogger("proxmox-mcp.cluster-manager")
+
+        if not clusters:
+            raise ValueError("At least one cluster must be configured")
+
+        self.managers: Dict[str, ProxmoxManager] = {}
+
+        for cluster in clusters:
+            self.logger.info(f"Initializing cluster: {cluster.name}")
+            try:
+                self.managers[cluster.name] = ProxmoxManager(cluster.proxmox, cluster.auth)
+                self.logger.info(f"Successfully connected to cluster: {cluster.name}")
+            except Exception as e:
+                self.logger.error(f"Failed to connect to cluster '{cluster.name}': {e}")
+                raise RuntimeError(f"Failed to connect to cluster '{cluster.name}': {e}")
+
+    def get_api(self, cluster_name: str) -> ProxmoxAPI:
+        """Get the Proxmox API instance for a specific cluster.
+
+        Args:
+            cluster_name: Name of the cluster to access
+
+        Returns:
+            ProxmoxAPI instance for the specified cluster
+
+        Raises:
+            ValueError: If the cluster name is not found
+        """
+        if cluster_name not in self.managers:
+            available = ', '.join(sorted(self.managers.keys()))
+            raise ValueError(f"Unknown cluster '{cluster_name}'. Available clusters: {available}")
+        return self.managers[cluster_name].get_api()
+
+    def list_clusters(self) -> List[str]:
+        """List all configured cluster names.
+
+        Returns:
+            List of cluster names in alphabetical order
+        """
+        return sorted(self.managers.keys())

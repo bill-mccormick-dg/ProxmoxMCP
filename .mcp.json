@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "proxmox": {
+      "command": "/home/bill/ProxmoxMCP/venv/bin/python",
+      "args": ["-m", "proxmox_mcp.server"],
+      "cwd": "/home/bill/ProxmoxMCP",
+      "env": {
+        "PYTHONPATH": "/home/bill/ProxmoxMCP/src",
+        "PROXMOX_MCP_CONFIG": "/home/bill/homenetwork/proxmox-mcp/config.json"
+      }
+    }
+  }
+}

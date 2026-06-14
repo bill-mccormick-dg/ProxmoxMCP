@@ -28,7 +28,7 @@ class ClusterTools(ProxmoxTool):
     proper operation of the Proxmox environment.
     """
 
-    def get_cluster_status(self) -> List[Content]:
+    def get_cluster_status(self, cluster: str) -> List[Content]:
         """Get overall Proxmox cluster health and configuration status.
 
         Retrieves comprehensive cluster information including:
@@ -36,41 +36,35 @@ class ClusterTools(ProxmoxTool):
         - Quorum status (essential for cluster operations)
         - Active node count and health
         - Resource distribution and status
-        
+
         This information is critical for:
         - Ensuring cluster stability
         - Monitoring node membership
         - Verifying resource availability
         - Detecting potential issues
 
+        Args:
+            cluster: Name of the cluster to query (e.g., 'Building 4')
+
         Returns:
-            List of Content objects containing formatted cluster status:
-            {
-                "name": "cluster-name",
-                "quorum": true/false,
-                "nodes": count,
-                "resources": [
-                    {
-                        "type": "resource-type",
-                        "status": "status"
-                    }
-                ]
-            }
+            List of Content objects containing formatted cluster status
 
         Raises:
-            RuntimeError: If cluster status query fails due to:
-                        - Network connectivity issues
-                        - Authentication problems
-                        - API endpoint failures
+            ValueError: If the cluster name is not found
+            RuntimeError: If cluster status query fails
         """
         try:
-            result = self.proxmox.cluster.status.get()
+            api = self.get_api(cluster)
+            result = api.cluster.status.get()
+            first = result[0] if result else {}
             status = {
-                "name": result[0].get("name") if result else None,
-                "quorum": result[0].get("quorate"),
+                "name": first.get("name"),
+                "quorum": first.get("quorate"),
                 "nodes": len([node for node in result if node.get("type") == "node"]),
                 "resources": [res for res in result if res.get("type") == "resource"]
             }
             return self._format_response(status, "cluster")
+        except ValueError:
+            raise
         except Exception as e:
             self._handle_error("get cluster status", e)
