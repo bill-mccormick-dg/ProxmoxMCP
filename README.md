@@ -41,34 +41,38 @@ pip install -e ".[dev]"
 ### Configuration (multi-cluster)
 
 Real credentials live in `proxmox-config/config.json`, which is **gitignored** — never commit
-it. Copy the template and fill in one block per cluster:
+it. Copy the example and fill in one block per cluster:
 
 ```bash
-cp proxmox-config/config.template.json proxmox-config/config.json
+cp proxmox-config/config.example.json proxmox-config/config.json
 ```
+
+`config.example.json` shows a real-world multi-cluster wiring (one block per building), with
+every secret/host left as a `REPLACE_WITH_*` placeholder:
 
 ```json
 {
   "clusters": [
     {
       "name": "Building 1",
-      "proxmox": { "host": "10.0.0.10", "port": 8006, "verify_ssl": false, "service": "PVE" },
-      "auth":    { "user": "root@pam", "token_name": "mcp-token", "token_value": "..." }
+      "proxmox": { "host": "REPLACE_WITH_IP", "port": 8006, "verify_ssl": false, "service": "PVE" },
+      "auth":    { "user": "root@pam", "token_name": "mcp-token", "token_value": "REPLACE_WITH_TOKEN_VALUE" }
     },
     {
       "name": "Building 2",
-      "proxmox": { "host": "10.0.0.11", "port": 8006, "verify_ssl": false, "service": "PVE" },
-      "auth":    { "user": "root@pam", "token_name": "mcp-token", "token_value": "..." }
+      "proxmox": { "host": "REPLACE_WITH_IP", "port": 8006, "verify_ssl": false, "service": "PVE" },
+      "auth":    { "user": "root@pam", "token_name": "mcp-token", "token_value": "REPLACE_WITH_TOKEN_VALUE" }
     }
   ],
   "logging": { "level": "INFO", "file": "proxmox_mcp.log" }
 }
 ```
 
-A legacy single-cluster config (top-level `proxmox`/`auth`) is auto-converted to a one-cluster
-list named `default`, so older configs keep working.
+Add as many cluster blocks as you have clusters. A legacy single-cluster config (top-level
+`proxmox`/`auth` with no `clusters` array) is auto-converted to a one-cluster list named
+`default`, so older configs keep working.
 
-> ⚠️ **Never put real tokens in `config.template.json` or any tracked file.** Only
+> ⚠️ **Never put real tokens in `config.example.json` or any tracked file.** Only
 > `config.json` (gitignored) should hold secrets. Rotate any token that lands in git.
 
 ### Proxmox API token setup
@@ -184,8 +188,7 @@ ProxmoxMCP/
 │   └── reports/             # generated reports (gitignored)
 ├── proxmox-config/
 │   ├── config.json          # YOUR clusters + tokens (gitignored — never commit)
-│   ├── config.template.json # multi-cluster template (placeholders only)
-│   └── config.example.json  # single-cluster example
+│   └── config.example.json  # real-world multi-cluster example (placeholders only)
 ├── CLAUDE.md
 └── pyproject.toml
 ```
