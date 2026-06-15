@@ -1,7 +1,7 @@
 {
     "clusters": [
         {
-            "name": "Building 1-ABE",
+            "name": "Building 1",
             "proxmox": {
                 "host": "10.0.0.10",
                 "port": 8006,
@@ -11,13 +11,13 @@
             "auth": {
                 "user": "root@pam",
                 "token_name": "mcp-token",
-                "token_value": "REDACTED_TOKEN"
+                "token_value": "REPLACE_WITH_TOKEN_VALUE"
             }
         },
         {
             "name": "Building 2",
             "proxmox": {
-                "host": "10.0.0.10",
+                "host": "10.0.0.11",
                 "port": 8006,
                 "verify_ssl": false,
                 "service": "PVE"
@@ -25,40 +25,12 @@
             "auth": {
                 "user": "root@pam",
                 "token_name": "mcp-token",
-                "token_value": "REDACTED_TOKEN"
-            }
-        },
-        {
-            "name": "Building 3",
-            "proxmox": {
-                "host": "10.0.0.10",
-                "port": 8006,
-                "verify_ssl": false,
-                "service": "PVE"
-            },
-            "auth": {
-                "user": "root@pam",
-                "token_name": "mcp-token",
-                "token_value": "REDACTED_TOKEN"
-            }
-        },
-        {
-            "name": "Building 4",
-            "proxmox": {
-                "host": "10.0.0.10",
-                "port": 8006,
-                "verify_ssl": false,
-                "service": "PVE"
-            },
-            "auth": {
-                "user": "root@pam",
-                "token_name": "mcp-token",
-                "token_value": "REDACTED_TOKEN"
+                "token_value": "REPLACE_WITH_TOKEN_VALUE"
             }
         }
     ],
     "logging": {
-        "level": "DEBUG",
+        "level": "INFO",
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         "file": "proxmox_mcp.log"
     }

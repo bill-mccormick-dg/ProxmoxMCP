@@ -1,372 +1,193 @@
-# 🚀 Proxmox Manager - Proxmox MCP Server
+# 🚀 Proxmox Manager — Proxmox MCP Server
 
-![ProxmoxMCP](https://github.com/user-attachments/assets/e32ab79f-be8a-420c-ab2d-475612150534)
+A Python-based [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for
+interacting with Proxmox hypervisors. It gives an AI assistant (Claude Code, Claude Desktop,
+Cline, …) a clean, token-authenticated interface to **multiple Proxmox clusters** — listing
+nodes/VMs/storage, checking cluster health, and running commands inside VMs.
 
-A Python-based Model Context Protocol (MCP) server for interacting with Proxmox hypervisors, providing a clean interface for managing nodes, VMs, and containers.
+> This is a fork of [canvrno/ProxmoxMCP](https://github.com/canvrno/ProxmoxMCP) with:
+> - **Multi-cluster support** — manage many Proxmox clusters from one server (every tool takes a `cluster` argument; `list_clusters` discovers them).
+> - **Claude Code integration** — first-class `claude mcp add` setup.
+> - **Ansible Claude-analysis playbook** — collect metrics across all clusters via the MCP and have Claude write an infrastructure report.
 
 ## 🏗️ Built With
 
-- [Cline](https://github.com/cline/cline) - Autonomous coding agent - Go faster with Cline.
-- [Proxmoxer](https://github.com/proxmoxer/proxmoxer) - Python wrapper for Proxmox API
-- [MCP SDK](https://github.com/modelcontextprotocol/sdk) - Model Context Protocol SDK
-- [Pydantic](https://docs.pydantic.dev/) - Data validation using Python type annotations
+- [Proxmoxer](https://github.com/proxmoxer/proxmoxer) — Python wrapper for the Proxmox API
+- [MCP SDK](https://github.com/modelcontextprotocol/python-sdk) — FastMCP server
+- [Pydantic](https://docs.pydantic.dev/) — config validation
 
 ## ✨ Features
 
-- 🤖 Full integration with Cline
-- 🛠️ Built with the official MCP SDK
-- 🔒 Secure token-based authentication with Proxmox
-- 🖥️ Tools for managing nodes and VMs
-- 💻 VM console command execution
-- 📝 Configurable logging system
-- ✅ Type-safe implementation with Pydantic
-- 🎨 Rich output formatting with customizable themes
-
-
-
-https://github.com/user-attachments/assets/1b5f42f7-85d5-4918-aca4-d38413b0e82b
-
-
+- 🌐 **Multi-cluster**: one server, N clusters, selected per-call by name
+- 🔒 Secure token-based authentication (per cluster)
+- 🖥️ Tools for nodes, VMs, storage, and cluster status
+- 💻 VM command execution via the QEMU guest agent
+- 🤖 Ansible playbook that turns live metrics into a Claude-written report
+- 🎨 Rich, themed output formatting
+- ✅ Type-safe (Pydantic) with a test suite
 
 ## 📦 Installation
 
-### Prerequisites
-- UV package manager (recommended)
-- Python 3.10 or higher
-- Git
-- Access to a Proxmox server with API token credentials
-
-Before starting, ensure you have:
-- [ ] Proxmox server hostname or IP
-- [ ] Proxmox API token (see [API Token Setup](#proxmox-api-token-setup))
-- [ ] UV installed (`pip install uv`)
-
-### Option 1: Quick Install (Recommended)
-
-1. Clone and set up environment:
-   ```bash
-   # Clone repository
-   cd ~/Documents/Cline/MCP  # For Cline users
-   # OR
-   cd your/preferred/directory  # For manual installation
-   
-   git clone https://github.com/canvrno/ProxmoxMCP.git
-   cd ProxmoxMCP
-
-   # Create and activate virtual environment
-   uv venv
-   source .venv/bin/activate  # Linux/macOS
-   # OR
-   .\.venv\Scripts\Activate.ps1  # Windows
-   ```
-
-2. Install dependencies:
-   ```bash
-   # Install with development dependencies
-   uv pip install -e ".[dev]"
-   ```
-
-3. Create configuration:
-   ```bash
-   # Create config directory and copy template
-   mkdir -p proxmox-config
-   cp config/config.example.json proxmox-config/config.json
-   ```
-
-4. Edit `proxmox-config/config.json`:
-   ```json
-   {
-       "proxmox": {
-           "host": "PROXMOX_HOST",        # Required: Your Proxmox server address
-           "port": 8006,                  # Optional: Default is 8006
-           "verify_ssl": false,           # Optional: Set false for self-signed certs
-           "service": "PVE"               # Optional: Default is PVE
-       },
-       "auth": {
-           "user": "USER@pve",            # Required: Your Proxmox username
-           "token_name": "TOKEN_NAME",    # Required: API token ID
-           "token_value": "TOKEN_VALUE"   # Required: API token value
-       },
-       "logging": {
-           "level": "INFO",               # Optional: DEBUG for more detail
-           "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-           "file": "proxmox_mcp.log"      # Optional: Log to file
-       }
-   }
-   ```
-
-### Verifying Installation
-
-1. Check Python environment:
-   ```bash
-   python -c "import proxmox_mcp; print('Installation OK')"
-   ```
-
-2. Run the tests:
-   ```bash
-   pytest
-   ```
-
-3. Verify configuration:
-   ```bash
-   # Linux/macOS
-   PROXMOX_MCP_CONFIG="proxmox-config/config.json" python -m proxmox_mcp.server
-
-   # Windows (PowerShell)
-   $env:PROXMOX_MCP_CONFIG="proxmox-config\config.json"; python -m proxmox_mcp.server
-   ```
-
-   You should see either:
-   - A successful connection to your Proxmox server
-   - Or a connection error (if Proxmox details are incorrect)
-
-## ⚙️ Configuration
-
-### Proxmox API Token Setup
-1. Log into your Proxmox web interface
-2. Navigate to Datacenter -> Permissions -> API Tokens
-3. Create a new API token:
-   - Select a user (e.g., root@pam)
-   - Enter a token ID (e.g., "mcp-token")
-   - Uncheck "Privilege Separation" if you want full access
-   - Save and copy both the token ID and secret
-
-
-## 🚀 Running the Server
-
-### Development Mode
-For testing and development:
 ```bash
-# Activate virtual environment first
-source .venv/bin/activate  # Linux/macOS
-# OR
-.\.venv\Scripts\Activate.ps1  # Windows
+git clone https://github.com/bill-mccormick-dg/ProxmoxMCP.git
+cd ProxmoxMCP
 
-# Run the server
-python -m proxmox_mcp.server
+python3 -m venv venv && source venv/bin/activate
+pip install -e ".[dev]"
 ```
 
-### Cline Desktop Integration
+> Note: this fork uses `venv/` (not `.venv/`).
 
-For Cline users, add this configuration to your MCP settings file (typically at `~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`):
+### Configuration (multi-cluster)
+
+Real credentials live in `proxmox-config/config.json`, which is **gitignored** — never commit
+it. Copy the template and fill in one block per cluster:
+
+```bash
+cp proxmox-config/config.template.json proxmox-config/config.json
+```
 
 ```json
 {
-    "mcpServers": {
-        "github.com/canvrno/ProxmoxMCP": {
-            "command": "/absolute/path/to/ProxmoxMCP/.venv/bin/python",
-            "args": ["-m", "proxmox_mcp.server"],
-            "cwd": "/absolute/path/to/ProxmoxMCP",
-            "env": {
-                "PYTHONPATH": "/absolute/path/to/ProxmoxMCP/src",
-                "PROXMOX_MCP_CONFIG": "/absolute/path/to/ProxmoxMCP/proxmox-config/config.json",
-                "PROXMOX_HOST": "your-proxmox-host",
-                "PROXMOX_USER": "username@pve",
-                "PROXMOX_TOKEN_NAME": "token-name",
-                "PROXMOX_TOKEN_VALUE": "token-value",
-                "PROXMOX_PORT": "8006",
-                "PROXMOX_VERIFY_SSL": "false",
-                "PROXMOX_SERVICE": "PVE",
-                "LOG_LEVEL": "DEBUG"
-            },
-            "disabled": false,
-            "autoApprove": []
-        }
+  "clusters": [
+    {
+      "name": "Building 1",
+      "proxmox": { "host": "10.0.0.10", "port": 8006, "verify_ssl": false, "service": "PVE" },
+      "auth":    { "user": "root@pam", "token_name": "mcp-token", "token_value": "..." }
+    },
+    {
+      "name": "Building 2",
+      "proxmox": { "host": "10.0.0.11", "port": 8006, "verify_ssl": false, "service": "PVE" },
+      "auth":    { "user": "root@pam", "token_name": "mcp-token", "token_value": "..." }
     }
+  ],
+  "logging": { "level": "INFO", "file": "proxmox_mcp.log" }
 }
 ```
 
-To help generate the correct paths, you can use this command:
+A legacy single-cluster config (top-level `proxmox`/`auth`) is auto-converted to a one-cluster
+list named `default`, so older configs keep working.
+
+> ⚠️ **Never put real tokens in `config.template.json` or any tracked file.** Only
+> `config.json` (gitignored) should hold secrets. Rotate any token that lands in git.
+
+### Proxmox API token setup
+
+1. Proxmox web UI → *Datacenter → Permissions → API Tokens*
+2. Create a token (e.g. user `root@pam`, token id `mcp-token`); uncheck "Privilege Separation" for full access
+3. Copy the **token id** (`token_name`) and **secret** (`token_value`) into `config.json`
+
+## 🚀 Running
+
 ```bash
-# This will print the MCP settings with your absolute paths filled in
-python -c "import os; print(f'''{{
-    \"mcpServers\": {{
-        \"github.com/canvrno/ProxmoxMCP\": {{
-            \"command\": \"{os.path.abspath('.venv/bin/python')}\",
-            \"args\": [\"-m\", \"proxmox_mcp.server\"],
-            \"cwd\": \"{os.getcwd()}\",
-            \"env\": {{
-                \"PYTHONPATH\": \"{os.path.abspath('src')}\",
-                \"PROXMOX_MCP_CONFIG\": \"{os.path.abspath('proxmox-config/config.json')}\",
-                ...
-            }}
-        }}
-    }}
-}}''')"
+source venv/bin/activate
+PROXMOX_MCP_CONFIG=proxmox-config/config.json python -m proxmox_mcp.server
 ```
 
-Important:
-- All paths must be absolute
-- The Python interpreter must be from your virtual environment
-- The PYTHONPATH must point to the src directory
-- Restart VSCode after updating MCP settings
+### Claude Code
 
-# 🔧 Available Tools
+```bash
+claude mcp add proxmox -s user \
+  -e PYTHONPATH=/abs/path/ProxmoxMCP/src \
+  -e PROXMOX_MCP_CONFIG=/abs/path/ProxmoxMCP/proxmox-config/config.json \
+  -- /abs/path/ProxmoxMCP/venv/bin/python -m proxmox_mcp.server
 
-The server provides the following MCP tools for interacting with Proxmox:
+claude mcp list   # expect: proxmox ✔ Connected
+```
 
-### get_nodes
-Lists all nodes in the Proxmox cluster.
+### Cline / Claude Desktop
 
-- Parameters: None
-- Example Response:
-  ```
-  🖥️ Proxmox Nodes
+Add an `mcpServers` entry (copy `.mcp.json.example` and fill in absolute paths):
 
-  🖥️ pve-compute-01
-    • Status: ONLINE
-    • Uptime: ⏳ 156d 12h
-    • CPU Cores: 64
-    • Memory: 186.5 GB / 512.0 GB (36.4%)
+```json
+{
+  "mcpServers": {
+    "proxmox": {
+      "command": "/abs/path/ProxmoxMCP/venv/bin/python",
+      "args": ["-m", "proxmox_mcp.server"],
+      "cwd": "/abs/path/ProxmoxMCP",
+      "env": {
+        "PYTHONPATH": "/abs/path/ProxmoxMCP/src",
+        "PROXMOX_MCP_CONFIG": "/abs/path/ProxmoxMCP/proxmox-config/config.json"
+      }
+    }
+  }
+}
+```
 
-  🖥️ pve-compute-02
-    • Status: ONLINE
-    • Uptime: ⏳ 156d 11h
-    • CPU Cores: 64
-    • Memory: 201.3 GB / 512.0 GB (39.3%)
-  ```
+## 🔧 Available Tools
 
-### get_node_status
-Get detailed status of a specific node.
+Every cluster-scoped tool takes a **`cluster`** argument — call `list_clusters` first to get the
+valid names.
 
-- Parameters:
-  - `node` (string, required): Name of the node
-- Example Response:
-  ```
-  🖥️ Node: pve-compute-01
-    • Status: ONLINE
-    • Uptime: ⏳ 156d 12h
-    • CPU Usage: 42.3%
-    • CPU Cores: 64 (AMD EPYC 7763)
-    • Memory: 186.5 GB / 512.0 GB (36.4%)
-    • Network: ⬆️ 12.8 GB/s ⬇️ 9.2 GB/s
-    • Temperature: 38°C
-  ```
+| Tool | Args | Purpose |
+|------|------|---------|
+| `list_clusters` | — | List configured cluster names. **Call this first.** |
+| `get_nodes` | `cluster` | Nodes in a cluster with status, CPU, memory |
+| `get_node_status` | `cluster`, `node` | Detailed status for one node |
+| `get_vms` | `cluster` | All VMs with status and resource usage |
+| `get_storage` | `cluster` | Storage pools with usage |
+| `get_cluster_status` | `cluster` | Overall cluster health / quorum |
+| `execute_vm_command` | `cluster`, `node`, `vmid`, `command` | Run a command in a VM via QEMU guest agent |
 
-### get_vms
-List all VMs across the cluster.
+`execute_vm_command` requires the VM to be running with the QEMU guest agent installed and
+command execution enabled.
 
-- Parameters: None
-- Example Response:
-  ```
-  🗃️ Virtual Machines
+## 🤖 Ansible: Claude-powered analysis
 
-  🗃️ prod-db-master (ID: 100)
-    • Status: RUNNING
-    • Node: pve-compute-01
-    • CPU Cores: 16
-    • Memory: 92.3 GB / 128.0 GB (72.1%)
+`ansible/proxmox-analysis.yml` collects metrics from **every** configured cluster (via the MCP,
+not by hitting the Proxmox API directly — see `ansible/proxmox_mcp_query.py`) and asks Claude to
+write a Markdown infrastructure report into `ansible/reports/`.
 
-  🗃️ prod-web-01 (ID: 102)
-    • Status: RUNNING
-    • Node: pve-compute-01
-    • CPU Cores: 8
-    • Memory: 12.8 GB / 32.0 GB (40.0%)
-  ```
+Two backends (set `analysis_backend` in the playbook):
+- **`cli`** (default) — uses the local `claude` CLI / your Claude.ai subscription (no API credits)
+- **`api`** — POSTs to `api.anthropic.com`; needs `ansible/vars/anthropic.yml` (ansible-vault encrypted, gitignored) with `anthropic_api_key`
 
-### get_storage
-List available storage.
+```bash
+export PROXMOX_MCP_CONFIG=$PWD/proxmox-config/config.json
 
-- Parameters: None
-- Example Response:
-  ```
-  💾 Storage Pools
+# CLI backend (subscription)
+ansible-playbook ansible/proxmox-analysis.yml
 
-  💾 ceph-prod
-    • Status: ONLINE
-    • Type: rbd
-    • Usage: 12.8 TB / 20.0 TB (64.0%)
-    • IOPS: ⬆️ 15.2k ⬇️ 12.8k
-
-  💾 local-zfs
-    • Status: ONLINE
-    • Type: zfspool
-    • Usage: 3.2 TB / 8.0 TB (40.0%)
-    • IOPS: ⬆️ 42.8k ⬇️ 35.6k
-  ```
-
-### get_cluster_status
-Get overall cluster status.
-
-- Parameters: None
-- Example Response:
-  ```
-  ⚙️ Proxmox Cluster
-
-    • Name: enterprise-cloud
-    • Status: HEALTHY
-    • Quorum: OK
-    • Nodes: 4 ONLINE
-    • Version: 8.1.3
-    • HA Status: ACTIVE
-    • Resources:
-      - Total CPU Cores: 192
-      - Total Memory: 1536 GB
-      - Total Storage: 70 TB
-    • Workload:
-      - Running VMs: 7
-      - Total VMs: 8
-      - Average CPU Usage: 38.6%
-      - Average Memory Usage: 42.8%
-  ```
-
-### execute_vm_command
-Execute a command in a VM's console using QEMU Guest Agent.
-
-- Parameters:
-  - `node` (string, required): Name of the node where VM is running
-  - `vmid` (string, required): ID of the VM
-  - `command` (string, required): Command to execute
-- Example Response:
-  ```
-  🔧 Console Command Result
-    • Status: SUCCESS
-    • Command: systemctl status nginx
-    • Node: pve-compute-01
-    • VM: prod-web-01 (ID: 102)
-
-  Output:
-  ● nginx.service - A high performance web server and a reverse proxy server
-     Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
-     Active: active (running) since Tue 2025-02-18 15:23:45 UTC; 2 months 3 days ago
-  ```
-- Requirements:
-  - VM must be running
-  - QEMU Guest Agent must be installed and running in the VM
-  - Command execution permissions must be enabled in the Guest Agent
-- Error Handling:
-  - Returns error if VM is not running
-  - Returns error if VM is not found
-  - Returns error if command execution fails
-  - Includes command output even if command returns non-zero exit code
+# API backend
+cp ansible/vars/anthropic.yml.example ansible/vars/anthropic.yml   # add key, then:
+ansible-vault encrypt ansible/vars/anthropic.yml
+ansible-playbook ansible/proxmox-analysis.yml -e analysis_backend=api --ask-vault-pass
+```
 
 ## 👨‍💻 Development
 
-After activating your virtual environment:
+```bash
+source venv/bin/activate
+pytest        # tests
+black .       # format
+ruff .        # lint
+mypy .        # type check
+```
 
-- Run tests: `pytest`
-- Format code: `black .`
-- Type checking: `mypy .`
-- Lint: `ruff .`
+See `CLAUDE.md` for an architecture overview.
 
 ## 📁 Project Structure
 
 ```
-proxmox-mcp/
-├── src/
-│   └── proxmox_mcp/
-│       ├── server.py          # Main MCP server implementation
-│       ├── config/            # Configuration handling
-│       ├── core/              # Core functionality
-│       ├── formatting/        # Output formatting and themes
-│       ├── tools/             # Tool implementations
-│       │   └── console/       # VM console operations
-│       └── utils/             # Utilities (auth, logging)
-├── tests/                     # Test suite
+ProxmoxMCP/
+├── src/proxmox_mcp/
+│   ├── server.py            # FastMCP server, tool registration, entry point
+│   ├── config/              # loader + Pydantic models (multi-cluster)
+│   ├── core/                # ProxmoxClusterManager (N cluster connections), logging
+│   ├── formatting/          # themed output
+│   └── tools/               # node / vm / storage / cluster / console tools
+├── ansible/
+│   ├── proxmox-analysis.yml # collect metrics across clusters → Claude report
+│   ├── proxmox_mcp_query.py # CLI wrapper that calls MCP tools, emits JSON
+│   ├── vars/                # anthropic.yml (vault, gitignored) + .example
+│   └── reports/             # generated reports (gitignored)
 ├── proxmox-config/
-│   └── config.example.json    # Configuration template
-├── pyproject.toml            # Project metadata and dependencies
-└── LICENSE                   # MIT License
+│   ├── config.json          # YOUR clusters + tokens (gitignored — never commit)
+│   ├── config.template.json # multi-cluster template (placeholders only)
+│   └── config.example.json  # single-cluster example
+├── CLAUDE.md
+└── pyproject.toml
 ```
 
 ## 📄 License
